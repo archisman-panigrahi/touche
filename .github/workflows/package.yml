@@ -37,7 +37,7 @@ jobs:
 
       - name: Build .deb package
         run: |
-          DPKG_DEB_COMPRESSOR_TYPE=gz dpkg-buildpackage -us -uc -nc
+          DPKG_DEB_COMPRESSOR_TYPE=gzip dpkg-buildpackage -us -uc -nc
           mv ../*.deb .
 
       - name: Upload .deb as workflow artifact
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build .deb package for ARM64
         run: |
-          DPKG_DEB_COMPRESSOR_TYPE=gz dpkg-buildpackage -us -uc -nc
+          DPKG_DEB_COMPRESSOR_TYPE=gzip dpkg-buildpackage -us -uc -nc
           mv ../*.deb .
 
       - name: Upload .deb (ARM64) as workflow artifact
