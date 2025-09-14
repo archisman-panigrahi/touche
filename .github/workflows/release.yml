@@ -7,15 +7,6 @@ on:
   push:
     tags:
       - '*'
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Release type (e.g. stable, beta)'
-        required: false
-        default: 'stable'
-      custom_tag:
-        description: 'Custom tag name (optional, overrides auto tag)'
-        required: false
 
 jobs:
 
