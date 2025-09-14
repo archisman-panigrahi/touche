@@ -37,7 +37,7 @@ jobs:
 
       - name: Build .deb package
         run: |
-          DPKG_DEB_COMPRESSOR_TYPE=xz dpkg-buildpackage -us -uc -nc
+          DPKG_DEB_COMPRESSOR_TYPE=gz dpkg-buildpackage -us -uc -nc
           mv ../*.deb .
 
       - name: Upload .deb as workflow artifact
@@ -56,7 +56,7 @@ jobs:
 
   build-deb-arm64:
     name: Build Debian Package (ARM64)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -82,13 +82,9 @@ jobs:
             nodejs \
             npm
 
-      - name: Set up QEMU for ARM64
-        uses: docker/setup-qemu-action@v3
-
       - name: Build .deb package for ARM64
         run: |
-          sudo apt-get install -y crossbuild-essential-arm64
-          DPKG_ARCH=arm64 DPKG_DEB_COMPRESSOR_TYPE=xz dpkg-buildpackage -us -uc -nc -a arm64
+          DPKG_DEB_COMPRESSOR_TYPE=gz dpkg-buildpackage -us -uc -nc
           mv ../*.deb .
 
       - name: Upload .deb (ARM64) as workflow artifact
