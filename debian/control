@@ -33,6 +33,7 @@ Depends: ${misc:Depends},
          libgtk-3-0 (>= 3.19.12),
          libstdc++6 (>= 6),
          libx11-6,
+         gir1.2-adw-1,
          touchegg (>=2.0.18)
 Description: The desktop application to configure Touchégg
  Easily configure your touchpad and touchscreen multi-touch gestures
