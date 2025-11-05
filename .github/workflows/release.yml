@@ -18,13 +18,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          path: touche
 
       - name: Build archive
         run: |
-          cd ${{ github.workspace }}/touche
+          # run archive from repository root
+          cd ${{ github.workspace }}
           npm run archive
+
+      - name: List workspace after archive
+        run: |
+          echo "Workspace content:"; ls -la ${{ github.workspace }}
+
+      - name: Fail if archive missing
+        run: |
+          if [ ! -f "${{ github.workspace }}/archive.tar.gz" ]; then
+            echo "archive.tar.gz not found in workspace"; ls -la ${{ github.workspace }}; exit 1
+          fi
 
       - name: Generate checksum
         run: |
@@ -34,13 +43,13 @@ jobs:
         uses: "actions/upload-artifact@v4"
         with:
           name: "archive.tar.gz"
-          path: "${{ github.workspace }}/touche/archive.tar.gz"
+          path: "${{ github.workspace }}/archive.tar.gz"
 
       - name: Upload archive checksum artifact
         uses: "actions/upload-artifact@v4"
         with:
           name: "ARCHIVE-SHA256SUM"
-          path: "${{ github.workspace }}/touche/ARCHIVE-SHA256SUM"
+          path: "${{ github.workspace }}/ARCHIVE-SHA256SUM"
 
   deb-package:
     name: Build Debian Package
@@ -80,7 +89,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deb-package
-          path: "*.deb"
+          path: "**/*.deb"
 
       - name: Upload .deb to GitHub Release (only for releases)
         if: github.event_name == 'release'
@@ -105,21 +114,49 @@ jobs:
 
       - name: Build .deb inside arm64 container
         run: |
+          cat > /tmp/build-arm64.sh <<'SH'
+          #!/bin/bash
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          # Install a minimal set of tools and certificates
+          apt-get install -y --no-install-recommends ca-certificates gnupg dirmngr
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper meson python3-setuptools dh-make desktop-file-utils gtk-update-icon-cache \
+            appstream appstream-util debhelper-compat gjs gobject-introspection hicolor-icon-theme \
+            libgirepository1.0-dev libglib2.0-dev-bin libgtk-3-dev libx11-dev meson nodejs npm
+
+          # Build the package for arm64
+          DPKG_DEB_COMPRESSOR_TYPE=gzip dpkg-buildpackage -us -uc -nc -aarm64
+
+          # Move resulting .deb files into the mounted workspace so Actions can pick them up
+          mv ../*.deb /work/
+          SH
+
+          chmod +x /tmp/build-arm64.sh
+
           docker run --rm --platform linux/arm64 \
             -v "$GITHUB_WORKSPACE":/work \
+            -v /tmp/build-arm64.sh:/build-arm64.sh:ro \
             -w /work \
-            debian:bookworm-slim \
-            /bin/bash -lc "set -e; apt-get update; apt-get install -y --no-install-recommends \ \
-              build-essential debhelper meson python3-setuptools dh-make desktop-file-utils gtk-update-icon-cache \ \
-              appstream appstream-util debhelper-compat gjs gobject-introspection hicolor-icon-theme \ \
-              libgirepository1.0-dev libglib2.0-dev-bin libgtk-3-dev libx11-dev meson nodejs npm ca-certificates \ \
-              && DPKG_DEB_COMPRESSOR_TYPE=gzip dpkg-buildpackage -us -uc -nc -aarm64 || true; mv ../*.deb /work/ || true"
+            debian:bookworm-slim /bin/bash /build-arm64.sh
 
       - name: Upload .deb (ARM64) as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: deb-package-arm64
-          path: "*.deb"
+          path: "**/*.deb"
+
+      - name: List workspace after ARM build
+        run: |
+          echo "Workspace content:"; ls -la ${{ github.workspace }}
+
+      - name: Fail if no deb found
+        run: |
+          set -e
+          if ! ls ${{ github.workspace }}/*.deb >/dev/null 2>&1 && ! ls ${{ github.workspace }}/**/*.deb >/dev/null 2>&1; then
+            echo "No .deb found in workspace:"; ls -la ${{ github.workspace }}; exit 1
+          fi
 
       - name: Upload .deb (ARM64) to GitHub Release (only for releases)
         if: github.event_name == 'release'
